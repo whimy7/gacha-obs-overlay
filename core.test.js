@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { drawOne, validateProbabilities, DEFAULT_PROBABILITIES } from './core.js';
+test('blank probabilities use defaults',()=>assert.deepEqual(validateProbabilities({EMPTY:'',R:'',SR:'',SSR:'',UR:''}).values,DEFAULT_PROBABILITIES));
+test('probability total is enforced',()=>assert.equal(validateProbabilities({EMPTY:1,R:1,SR:1,SSR:1,UR:1}).valid,false));
+test('pity returns exact rarity and resets lower counters',()=>{const r=drawOne({probabilities:DEFAULT_PROBABILITIES,pityRules:[{rarity:'SSR',limit:10,enabled:true}],pity:{EMPTY:9,R:9,SR:9,SSR:9,UR:9},random:()=>0.99});assert.equal(r.rarity,'SSR');assert.equal(r.isPity,true);assert.equal(r.nextPity.SR,0);assert.equal(r.nextPity.SSR,0)});
+test('demo forced result is not pity',()=>{const r=drawOne({probabilities:DEFAULT_PROBABILITIES,pityRules:[],pity:{SR:2,SSR:2,UR:2},mode:'demo',forcedRarity:'UR'});assert.equal(r.rarity,'UR');assert.equal(r.isPity,false)});
