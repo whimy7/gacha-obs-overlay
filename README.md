@@ -151,6 +151,13 @@ The total must equal 100%. Blank probability fields restore these defaults when 
 
 Separate pity limits can be configured for SR, SSR, and UR. When a limit is reached, the result is exactly the configured rarity. A naturally drawn higher rarity also satisfies and resets lower-rarity pity counters. Singles and ten-pulls use the same sequential draw rules.
 
+### Ten-Pull Modes
+
+- `Random ten-pull`: each slot is drawn independently using the base probabilities.
+- `Fair constrained ten-pull`: samples only legal ten-pull outcomes. SSR and UR are mutually exclusive, each high rarity appears at most once, all other slots become N when a high rarity appears, and SR+R stays within the configured limit (2 by default).
+
+The constrained mode changes the final ten-pull distribution by design; it is a public group rule, not post-draw result masking.
+
 ### Control Panel Features
 
 - Add and select participants; duplicate names are rejected.
