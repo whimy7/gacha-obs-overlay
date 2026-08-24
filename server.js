@@ -33,13 +33,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'DELETE' && parts[1] === 'api' && parts[2] === 'participants' && parts[3]) { const id = Number(parts[3]); const before = db.participants.length; db.participants = db.participants.filter((p) => p.id !== id); db.records = db.records.filter((r) => r.participantId !== id); if (db.participants.length === before) return sendJson(res, 404, { error: '观众不存在' }); save(); return sendJson(res, 200, { ok: true }); }
     if (req.method === 'POST' && parts[1] === 'api' && parts[2] === 'participants' && parts[4] === 'draw') {
       const p = findParticipant(parts[3]); if (!p) return sendJson(res, 404, { error: '观众不存在' }); const input = await readBody(req); const count = input.count === 10 ? 10 : 1; const mode = input.mode === 'demo' ? 'demo' : 'fair'; const batchId = `${Date.now()}-${Math.random().toString(36).slice(2)}`; let pity = { ...p.pity }; const results = [];
-      if (count === 10 && mode !== 'demo' && db.settings.constraintEnabled && db.settings.tenPullMode === 'constrained') { results.push(...drawTenConstrained({ probabilities: db.settings.probabilities, pityRules: db.settings.pityRules, pity, maxLow: db.settings.maxLow })); pity = results.at(-1).nextPity; }
+      if (count === 10 && db.settings.constraintEnabled && db.settings.tenPullMode === 'constrained') { results.push(...drawTenConstrained({ probabilities: db.settings.probabilities, pityRules: db.settings.pityRules, pity, maxLow: db.settings.maxLow, forcedRarity: mode === 'demo' ? input.forcedRarity : undefined, forceMode: mode === 'demo' ? input.forceMode : 'none' })); pity = results.at(-1).nextPity; }
       else for (let i = 0; i < count; i++) { const result = drawOne({ probabilities: db.settings.probabilities, pityRules: db.settings.pityRules, pity, mode, forcedRarity: i === 0 ? input.forcedRarity : undefined }); pity = result.nextPity; results.push({ ...result, index: i }); }
-      if (mode === 'demo' && input.forcedRarity && RARITIES.includes(input.forcedRarity)) {
-        const targetRank = RARITIES.indexOf(input.forcedRarity);
-        if (input.forceMode === 'atLeast') results[0] = { ...results[0], rarity: input.forcedRarity, isPity: false };
-        if (input.forceMode === 'maxRarity') results.forEach((r, i) => { if (RARITIES.indexOf(r.rarity) > targetRank) results[i] = { ...r, rarity: 'EMPTY', isPity: false }; });
-      }
       const countDemo = mode === 'demo' && input.countDemo !== true; if (!countDemo) { p.totalDraws += count; p.pity = pity; p.updatedAt = now(); results.forEach((r) => db.records.push({ id: Date.now() + r.index, participantId: p.id, batchId, index: r.index, rarity: r.rarity, isPity: r.isPity, mode, createdAt: now() })); save(); }
       db.eventSeq += 1; db.lastEvent = { type: 'draw', participant: participant(p), results, batchId, revealMode: db.settings.revealMode }; save(); return sendJson(res, 200, db.lastEvent);
     }
