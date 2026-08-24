@@ -56,16 +56,20 @@ function isPityValid(sequence, pity, pityRules) {
   return true;
 }
 
-export function drawTenConstrained({ probabilities, pityRules = [], pity = {}, random = Math.random, maxLow = 2 }) {
+export function drawTenConstrained({ probabilities, pityRules = [], pity = {}, random = Math.random, maxLow = 2, forcedRarity, forceMode = 'none' }) {
   const countVectors = [];
   for (let sr = 0; sr <= maxLow; sr++) for (let r = 0; r <= maxLow - sr; r++) countVectors.push({ EMPTY: 10 - sr - r, R: r, SR: sr, SSR: 0, UR: 0 });
   countVectors.push({ EMPTY: 9, R: 0, SR: 0, SSR: 1, UR: 0 }, { EMPTY: 9, R: 0, SR: 0, SSR: 0, UR: 1 });
   const candidates = [];
-  for (const counts of countVectors) for (const sequence of permutationsForCounts(counts)) if (isPityValid(sequence, pity, pityRules)) {
+  for (const counts of countVectors) for (const sequence of permutationsForCounts(counts)) if (isPityValid(sequence, pity, pityRules) && (!forcedRarity || forceMode === 'none' || (forceMode === 'atLeast' && sequence.includes(forcedRarity)) || (forceMode === 'maxRarity' && sequence.every((r) => RARITIES.indexOf(r) <= RARITIES.indexOf(forcedRarity))))) {
     const weight = sequence.reduce((total, rarity) => total * ((probabilities[rarity] || 0) / 100), 1);
     if (weight > 0) candidates.push({ sequence, weight });
   }
   if (!candidates.length) throw new Error('当前保底配置与十连约束没有可行结果，请调整配置');
+  const allN = candidates.find((candidate) => candidate.sequence.every((r) => r === 'EMPTY'));
+  const legalTotal = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  // Preserve the probability mass of invalid combinations as N instead of renormalizing it into rare cards.
+  if (allN) allN.weight += Math.max(0, 1 - legalTotal);
   const total = candidates.reduce((sum, candidate) => sum + candidate.weight, 0); let cursor = random() * total; let chosen = candidates[candidates.length - 1].sequence;
   for (const candidate of candidates) { cursor -= candidate.weight; if (cursor <= 0) { chosen = candidate.sequence; break; } }
   let currentPity = { ...pity }; const results = chosen.map((rarity, index) => { const result = drawOne({ probabilities, pityRules, pity: currentPity, forcedRarity: rarity, mode: 'demo' }); currentPity = result.nextPity; return { ...result, rarity, index }; });
